@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  envoy:
+    image: envoyproxy/envoy:v1.30-latest # Sử dụng bản ổn định năm 2026
+    container_name: zero-trust-gateway
+    ports:
+      - "443:443"
+    volumes:
+      - ./envoy.yaml:/etc/envoy/envoy.yaml:ro
+      - ./certs:/etc/envoy/certs:ro
+    networks:
+      - zero-trust-network
+    depends_on:
+      - auth-service
+      - resource-api
+
+  # Giả lập Auth Service của Nghĩa (Dùng ảnh echo để test việc nhận nhận header)
+  auth-service:
+    image: mendhak/http-https-echo:latest
+    container_name: mock-auth-service
+    ports:
+      - "8080:8080"
+    networks:
+      - zero-trust-network
+
+  # Giả lập Resource API của Nam
+  resource-api:
+    image: mendhak/http-https-echo:latest
+    container_name: mock-resource-api
+    ports:
+      - "8081:8080"
+    networks:
+      - zero-trust-network
+
+networks:
+  zero-trust-network:
+    driver: bridge
