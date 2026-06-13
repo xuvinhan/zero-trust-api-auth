@@ -1,0 +1,24 @@
+[ ca ]
+default_ca = CA_default
+
+[ CA_default ]
+dir               = ./certs
+database          = ./certs/crl/index.txt
+new_certs_dir     = ./certs/crl
+certificate       = ./certs/root-ca.crt
+private_key       = ./certs/root-ca.key
+serial            = ./certs/crl/serial
+crlnumber         = ./certs/crl/crlnumber
+crl               = ./certs/crl/ca.crl
+default_md        = sha256
+default_crl_days  = 365
+policy            = policy_any
+x509_extensions   = usr_cert
+
+[ policy_any ]
+commonName = supplied
+
+[ usr_cert ]
+basicConstraints = CA:FALSE
+keyUsage = digitalSignature, keyEncipherment
+extendedKeyUsage = clientAuth

@@ -1,0 +1,16 @@
+# Chặn toàn bộ khóa bí mật và yêu cầu ký số của phòng Lab
+certs/*.key
+certs/*.csr
+certs/*.srl
+certs/*.crt
+
+# Chặn database động và danh sách đen sinh ra khi chạy nền
+certs/crl/index.txt*
+certs/crl/serial*
+certs/crl/crlnumber*
+certs/crl/ca.crl
+certs/crl/revoked.txt
+
+# Chặn thư mục backup chứng chỉ cũ và ảnh chụp màn hình
+certs/backup/
+*.png
