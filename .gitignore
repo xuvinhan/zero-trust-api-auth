@@ -1,0 +1,53 @@
+# ======================
+# Python
+# ======================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Python cache
+.pytest_cache/
+
+# ======================
+# Virtual environments
+# ======================
+venv/
+.venv/
+env/
+*/venv/
+*/.venv/
+
+# ======================
+# Environment variables
+# ======================
+.env
+*.env
+
+# ======================
+# IDE
+# ======================
+.vscode/
+.idea/
+
+# ======================
+# OS
+# ======================
+.DS_Store
+Thumbs.db
+
+# ======================
+# Logs
+# ======================
+*.log
+
+# ======================
+# PKI certificates
+# ======================
+infra/certs/
+
+# ======================
+# JWT keys
+# ======================
+auth_service/keys/private.pem
+!auth_service/keys/public.pem
