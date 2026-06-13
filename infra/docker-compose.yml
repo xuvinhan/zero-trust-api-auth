@@ -1,38 +1,40 @@
-version: '3.8'
-
 services:
   envoy:
-    image: envoyproxy/envoy:v1.30-latest # Sử dụng bản ổn định năm 2026
+    image: envoyproxy/envoy:v1.30-latest
     container_name: zero-trust-gateway
     ports:
-      - "443:443"
+      - "443:443" # Cổng DUY NHẤT lộ diện ra thế giới bên ngoài
     volumes:
       - ./envoy.yaml:/etc/envoy/envoy.yaml:ro
       - ./certs:/etc/envoy/certs:ro
     networks:
-      - zero-trust-network
+      - public_net
+      - internal_net
     depends_on:
       - auth-service
       - resource-api
 
-  # Giả lập Auth Service của Nghĩa (Dùng ảnh echo để test việc nhận nhận header)
   auth-service:
     image: mendhak/http-https-echo:latest
     container_name: mock-auth-service
-    ports:
-      - "8080:8080"
+    
+    expose:
+      - "8080" # Chỉ mở cổng âm bên trong mạng nội bộ Docker cho Envoy gọi
     networks:
-      - zero-trust-network
+      - internal_net
 
-  # Giả lập Resource API của Nam
   resource-api:
     image: mendhak/http-https-echo:latest
     container_name: mock-resource-api
-    ports:
-      - "8081:8080"
+
+    expose:
+      - "8080" # Chỉ mở cổng âm bên trong mạng nội bộ Docker cho Envoy gọi
     networks:
-      - zero-trust-network
+      - internal_net
 
 networks:
-  zero-trust-network:
-    driver: bridge
+  public_net:
+    name: zero-trust-public-network
+  internal_net:
+    name: zero-trust-internal-network
+    internal: true # Ép mạng này biệt lập hoàn toàn, không có đường ra Internet
