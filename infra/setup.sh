@@ -105,3 +105,6 @@ echo "-----------------------------------------"
 X5T_S256=$(openssl x509 -in "$CERT_DIR/client.crt" -outform DER | openssl dgst -sha256 -binary | base64 | tr '+/' '-_' | tr -d '=')
 echo -e "\e[1;32m$X5T_S256\e[0m"
 echo "-----------------------------------------"
+echo "--- THÔNG TIN X5T#S256 (RFC 8705) ---"
+X5T_S256=$(openssl x509 -in "$CERT_DIR/client.crt" -outform DER | openssl dgst -sha256 -binary | base64 | tr '+/' '-_' | tr -d '=')
+echo -e "\e[1;32m$X5T_S256\e[0m"
