@@ -6,6 +6,9 @@ def get_private_key():
     with open("keys/private.pem") as f:
         return f.read()
 
+def get_public_key():
+    with open("keys/public.pem") as f:
+        return f.read()
 
 def generate_access_token(client_id, thumbprint):
 
@@ -47,3 +50,12 @@ def generate_access_token(client_id, thumbprint):
     )
 
     return token
+
+def verify_access_token(token):
+    return jwt.decode(
+        token,
+        get_public_key(),
+        algorithms=["RS256"],
+        audience="https://api.resource.local",
+        issuer="https://auth.zero-trust.local"
+    )
