@@ -3,12 +3,26 @@ services:
     image: envoyproxy/envoy:v1.30-latest
     container_name: zero-trust-gateway
 
+    # Image Envoy mặc định chuyển sang user envoy.
+    # Dùng UID/GID của người sở hữu các private key được bind mount.
+    environment:
+      ENVOY_UID: "${ENVOY_UID:-1000}"
+      ENVOY_GID: "${ENVOY_GID:-1000}"
+
     ports:
       - "443:443"
 
     volumes:
+      # Cấu hình Envoy.
       - ./envoy.yaml:/etc/envoy/envoy.yaml:ro
+
+      # Bộ cert bên ngoài: Client → Envoy.
       - ./certs:/etc/envoy/certs:ro
+
+      # Bộ cert nội bộ: Envoy → Auth Service.
+      - ./service-certs/ca/service-ca.crt:/etc/envoy/upstream-tls/service-ca.crt:ro
+      - ./service-certs/envoy/envoy-upstream.crt:/etc/envoy/upstream-tls/envoy-upstream.crt:ro
+      - ./service-certs/envoy/envoy-upstream.key:/etc/envoy/upstream-tls/envoy-upstream.key:ro
 
     networks:
       - edge_net
@@ -28,10 +42,16 @@ services:
     container_name: auth-service
 
     volumes:
+      # JWT signing keys hiện có.
       - ./keys:/app/keys:ro
 
+      # Bộ server cert nội bộ của Auth Service.
+      - ./service-certs/ca/service-ca.crt:/app/tls/service-ca.crt:ro
+      - ./service-certs/auth/auth-service.crt:/app/tls/auth-service.crt:ro
+      - ./service-certs/auth/auth-service.key:/app/tls/auth-service.key:ro
+
     expose:
-      - "8080"
+      - "8443"
 
     networks:
       - internal_net

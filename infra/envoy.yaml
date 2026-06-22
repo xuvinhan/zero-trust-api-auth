@@ -15,7 +15,7 @@ static_resources:
                 stat_prefix: ingress_http
                 generate_request_id: true
 
-                # Xóa XFCC do client tự gửi và tạo lại từ chứng chỉ mTLS.
+                # Xóa XFCC do Client tự gửi và tạo lại từ cert mTLS thật.
                 forward_client_cert_details: SANITIZE_SET
 
                 set_current_client_cert_details:
@@ -31,7 +31,8 @@ static_resources:
                         - "*"
 
                       routes:
-                        # Login cần mTLS nhưng chưa có JWT.
+                        # Login yêu cầu mTLS Client → Envoy nhưng chưa có JWT,
+                        # nên không áp dụng ext_authz.
                         - match:
                             prefix: "/auth/login"
                           route:
@@ -41,7 +42,8 @@ static_resources:
                               "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthzPerRoute
                               disabled: true
 
-                        # Cho phép gọi trực tiếp khi cần debug.
+                        # Route debug /verify đi thẳng tới Auth Service.
+                        # Tắt ext_authz để tránh Auth kiểm tra chính request gọi Auth.
                         - match:
                             prefix: "/verify"
                           route:
@@ -51,7 +53,7 @@ static_resources:
                               "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthzPerRoute
                               disabled: true
 
-                        # API công khai không cần JWT.
+                        # API công khai không yêu cầu JWT.
                         - match:
                             prefix: "/api/public"
                           route:
@@ -68,7 +70,7 @@ static_resources:
                             cluster: resource_api_cluster
                             timeout: 15s
 
-                        # Các đường dẫn khác trả về 404.
+                        # Đường dẫn khác trả 404.
                         - match:
                             prefix: "/"
                           direct_response:
@@ -81,22 +83,22 @@ static_resources:
                               disabled: true
 
                 http_filters:
-                  # Phải đặt ext_authz trước router.
+                  # ext_authz phải đứng trước router.
                   - name: envoy.filters.http.ext_authz
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
                       transport_api_version: V3
 
-                      # Auth Service bị lỗi thì request phải bị chặn.
+                      # Auth Service lỗi thì request phải bị chặn.
                       failure_mode_allow: false
 
                       http_service:
                         server_uri:
-                          uri: "http://auth-service:8080"
+                          uri: "https://auth-service:8443"
                           cluster: auth_service_cluster
                           timeout: 2s
 
-                        # GET /api/protected sẽ được gửi đến:
+                        # GET /api/protected được kiểm tra tại:
                         # GET /verify/api/protected
                         path_prefix: "/verify"
 
@@ -112,6 +114,7 @@ static_resources:
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
 
+          # Downstream mTLS: Client → Envoy.
           transport_socket:
             name: envoy.transport_sockets.tls
             typed_config:
@@ -131,8 +134,9 @@ static_resources:
                     filename: "/etc/envoy/certs/root-ca.crt"
 
   clusters:
+    # Upstream mTLS: Envoy → Auth Service.
     - name: auth_service_cluster
-      connect_timeout: 1s
+      connect_timeout: 2s
       type: STRICT_DNS
       lb_policy: ROUND_ROBIN
 
@@ -144,8 +148,40 @@ static_resources:
                   address:
                     socket_address:
                       address: auth-service
-                      port_value: 8080
+                      port_value: 8443
 
+      transport_socket:
+        name: envoy.transport_sockets.tls
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
+
+          # SNI gửi tới Auth Service.
+          sni: auth-service
+
+          common_tls_context:
+            tls_params:
+              tls_minimum_protocol_version: TLSv1_2
+              tls_maximum_protocol_version: TLSv1_3
+
+            # Envoy gửi client certificate này cho Auth Service.
+            tls_certificates:
+              - certificate_chain:
+                  filename: "/etc/envoy/upstream-tls/envoy-upstream.crt"
+                private_key:
+                  filename: "/etc/envoy/upstream-tls/envoy-upstream.key"
+
+            # Envoy xác minh certificate của Auth Service.
+            validation_context:
+              trusted_ca:
+                filename: "/etc/envoy/upstream-tls/service-ca.crt"
+
+              match_typed_subject_alt_names:
+                - san_type: DNS
+                  matcher:
+                    exact: "auth-service"
+
+    # Resource API tạm thời vẫn giữ HTTP 8080.
+    # Chỉ đổi sang mTLS sau khi Nam hoàn thành Resource API.
     - name: resource_api_cluster
       connect_timeout: 1s
       type: STRICT_DNS
