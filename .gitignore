@@ -60,3 +60,6 @@ infra/auth-service/
 *.malformed-backup
 *.old-before-ext-authz
 *.before-transport-v3
+
+# Internal mTLS certificates and private keys
+infra/service-certs/
