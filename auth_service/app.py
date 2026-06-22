@@ -11,7 +11,7 @@ from cert_utils import (
 
 
 app = Flask(__name__)
-    
+
 @app.route("/auth/login", methods=["POST"])
 def login():
 
@@ -49,8 +49,26 @@ def login():
         "expires_in": 3600
     })
 
-@app.route("/verify", methods=["POST"])
-def verify():
+VERIFY_METHODS = [
+    "GET",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "OPTIONS",
+    "HEAD",
+]
+
+@app.route(
+    "/verify",
+    defaults={"original_path": ""},
+    methods=VERIFY_METHODS,
+)
+@app.route(
+    "/verify/<path:original_path>",
+    methods=VERIFY_METHODS,
+)
+def verify(original_path=""):
 
     auth_header = request.headers.get(
         "Authorization"
@@ -128,5 +146,5 @@ if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
         port=8080,
-        debug=True
+        debug=False
     )

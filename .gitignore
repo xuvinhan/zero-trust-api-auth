@@ -50,4 +50,17 @@ infra/certs/
 # JWT keys
 # ======================
 auth_service/keys/private.pem
-!auth_service/keys/public.pem
+!auth_service/keys/public.peminfra/keys/private.pem
+auth_service/keys/private.pem
+infra/certs/
+__pycache__/
+*.pyc
+*.before-*
+*.backup
+*.malformed-backup
+auth-service/
+infra/auth-service/
+infra/keys/
+auth_service/keys/
+*.old-before-ext-authz
+*.before-transport-v3
