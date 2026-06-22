@@ -5,8 +5,6 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
-
-# Python cache
 .pytest_cache/
 
 # ======================
@@ -42,25 +40,23 @@ Thumbs.db
 *.log
 
 # ======================
-# PKI certificates
+# PKI certificates and private keys
 # ======================
 infra/certs/
+infra/keys/
+auth_service/keys/
 
 # ======================
-# JWT keys
+# Mistaken local directories
 # ======================
-auth_service/keys/private.pem
-!auth_service/keys/public.peminfra/keys/private.pem
-auth_service/keys/private.pem
-infra/certs/
-__pycache__/
-*.pyc
+auth-service/
+infra/auth-service/
+
+# ======================
+# Local backup files
+# ======================
 *.before-*
 *.backup
 *.malformed-backup
-auth-service/
-infra/auth-service/
-infra/keys/
-auth_service/keys/
 *.old-before-ext-authz
 *.before-transport-v3
