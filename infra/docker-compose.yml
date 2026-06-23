@@ -65,8 +65,13 @@ services:
 
     container_name: resource-api
 
+    volumes:
+      - ./service-certs/ca/service-ca.crt:/app/tls/service-ca.crt:ro
+      - ./service-certs/resource/resource-api.crt:/app/tls/resource-api.crt:ro
+      - ./service-certs/resource/resource-api.key:/app/tls/resource-api.key:ro
+
     expose:
-      - "8080"
+      - "8443"
 
     networks:
       - internal_net

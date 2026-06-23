@@ -180,8 +180,7 @@ static_resources:
                   matcher:
                     exact: "auth-service"
 
-    # Resource API tạm thời vẫn giữ HTTP 8080.
-    # Chỉ đổi sang mTLS sau khi Nam hoàn thành Resource API.
+    # Envoy kết nối Resource API bằng HTTPS/mTLS nội bộ.
     - name: resource_api_cluster
       connect_timeout: 1s
       type: STRICT_DNS
@@ -195,4 +194,30 @@ static_resources:
                   address:
                     socket_address:
                       address: resource-api
-                      port_value: 8080
+                      port_value: 8443
+
+      transport_socket:
+        name: envoy.transport_sockets.tls
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
+          sni: "resource-api"
+
+          common_tls_context:
+            tls_params:
+              tls_minimum_protocol_version: TLSv1_2
+              tls_maximum_protocol_version: TLSv1_3
+
+            tls_certificates:
+              - certificate_chain:
+                  filename: /etc/envoy/upstream-tls/envoy-upstream.crt
+                private_key:
+                  filename: /etc/envoy/upstream-tls/envoy-upstream.key
+
+            validation_context:
+              trusted_ca:
+                filename: /etc/envoy/upstream-tls/service-ca.crt
+
+              match_typed_subject_alt_names:
+                - san_type: DNS
+                  matcher:
+                    exact: "resource-api"
