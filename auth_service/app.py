@@ -1,3 +1,4 @@
+import ssl
 from flask import Flask, jsonify, request
 import jwt
 from jwt_service import (
@@ -143,8 +144,25 @@ def verify(original_path=""):
         }), 400
 
 if __name__ == "__main__":
+
+    context = ssl.create_default_context(
+        ssl.Purpose.CLIENT_AUTH
+    )
+
+    context.load_cert_chain(
+        certfile="/app/tls/auth-service.crt",
+        keyfile="/app/tls/auth-service.key"
+    )
+
+    context.load_verify_locations(
+        cafile="/app/tls/service-ca.crt"
+    )
+
+    context.verify_mode = ssl.CERT_REQUIRED
+
     app.run(
         host="0.0.0.0",
-        port=8080,
+        port=8443,
+        ssl_context=context,
         debug=False
     )
