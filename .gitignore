@@ -63,3 +63,5 @@ infra/auth-service/
 
 # Internal mTLS certificates and private keys
 infra/service-certs/
+auth_service/keys/private.pem
+infra/keys/private.pem

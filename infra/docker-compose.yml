@@ -43,7 +43,7 @@ services:
 
     volumes:
       # JWT signing keys hiện có.
-      - ./keys:/app/keys:ro
+      - ../auth_service/keys:/app/keys:ro
 
       # Bộ server cert nội bộ của Auth Service.
       - ./service-certs/ca/service-ca.crt:/app/tls/service-ca.crt:ro
