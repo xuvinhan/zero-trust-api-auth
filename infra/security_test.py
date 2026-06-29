@@ -147,6 +147,16 @@ RESET  = "\033[0m"
 
 results = []
 
+TEST_USERNAME = os.getenv(
+    "SECURITY_TEST_USERNAME",
+    "vinh",
+)
+
+TEST_PASSWORD = os.getenv(
+    "SECURITY_TEST_PASSWORD",
+    "",
+)
+
 # ----------------------------- Helper functions ---------------------------------
 def _make_request(method, path, headers=None, cert=None):
     url = ENVOY_URL + path
@@ -173,7 +183,22 @@ def _get_valid_jwt():
         print("[ERROR] Client cert missing. Run bash infra/setup.sh")
         return None
     try:
-        resp = requests.post(ENVOY_URL + "/auth/login", cert=(CERT_FILE, KEY_FILE), verify=False, timeout=5)
+        if not TEST_PASSWORD:
+            print(
+                "[ERROR] Missing SECURITY_TEST_PASSWORD environment variable"
+            )
+            return None
+
+        resp = requests.post(
+            ENVOY_URL + "/auth/login",
+            cert=(CERT_FILE, KEY_FILE),
+            verify=False,
+            json={
+                "username": TEST_USERNAME,
+                "password": TEST_PASSWORD,
+            },
+            timeout=5,
+        )
         if resp.status_code == 200:
             token = resp.json().get("access_token")
             if token:
@@ -224,7 +249,8 @@ def _expired_jwt():
 
     payload = {
         "iss": "https://auth.zero-trust.local",
-        "sub": "test-client",
+        "sub": TEST_USERNAME,
+        "client_id": "test-client",
         "aud": "https://api.resource.local",
 
         # Chỉ claim này làm token hết hạn.
@@ -379,9 +405,8 @@ def print_summary():
         print(f"  {icon}  {r['id']} — {r['name']}")
     print(f"{'═'*65}")
     if failed > 0:
-        print(f"\n{YELLOW}⚠ Một số test FAIL:{RESET}")
-        print("   - TC-02: Envoy/Auth Service chưa chặn forged JWT. Kiểm tra ext_authz và /verify.")
-        print("   - TC-04: Envoy/Auth Service chưa chặn expired token hoặc response không chứa expired. Kiểm tra Auth Service verify_access_token, exp claim và ext_authz.")
+        print(f"\n{YELLOW}⚠ Một số test chưa đạt.{RESET}")
+        print("   Kiểm tra chi tiết các kết quả FAIL ở phía trên.")
     return 0 if failed == 0 else 1
 
 if __name__ == "__main__":

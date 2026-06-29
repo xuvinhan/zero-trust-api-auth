@@ -1,21 +1,28 @@
+from __future__ import annotations
+
 import ssl
-from flask import Flask, jsonify, request
+
 import jwt
+from flask import Flask, jsonify, request
+
+from cert_utils import (
+    extract_cn_from_xfcc,
+    extract_thumbprint_from_xfcc,
+)
 from jwt_service import (
     generate_access_token,
-    verify_access_token
+    verify_access_token,
 )
-from cert_utils import (
-    extract_thumbprint_from_xfcc,
-    extract_cn_from_xfcc
-)
+from user_store import authenticate_user
 
 
 app = Flask(__name__)
 
+
 @app.route("/auth/login", methods=["POST"])
 def login():
-
+    # Certificate này thuộc confidential client/BFF,
+    # không thuộc người dùng trình duyệt.
     xfcc = request.headers.get(
         "x-forwarded-client-cert"
     )
@@ -24,6 +31,37 @@ def login():
         return jsonify({
             "error": "Missing XFCC header"
         }), 400
+
+    credentials = request.get_json(
+        silent=True
+    ) or {}
+
+    username = credentials.get("username")
+    password = credentials.get("password")
+
+    if (
+        not isinstance(username, str)
+        or not username.strip()
+        or not isinstance(password, str)
+        or not password
+    ):
+        return jsonify({
+            "error": "Username and password are required"
+        }), 400
+
+    username = username.strip()
+
+    user = authenticate_user(
+        username,
+        password,
+    )
+
+    if user is None:
+        # Không thông báo username hay password sai
+        # để tránh làm lộ tài khoản tồn tại.
+        return jsonify({
+            "error": "Invalid username or password"
+        }), 401
 
     try:
         thumbprint = extract_thumbprint_from_xfcc(
@@ -34,21 +72,29 @@ def login():
             xfcc
         )
 
-    except ValueError as e:
+    except ValueError as exc:
         return jsonify({
-            "error": str(e)
+            "error": str(exc)
         }), 400
 
     token = generate_access_token(
-        client_id,
-        thumbprint
+        username=user["username"],
+        client_id=client_id,
+        thumbprint=thumbprint,
+        role=user["role"],
+        scope=user["scope"],
     )
 
     return jsonify({
         "access_token": token,
         "token_type": "Bearer",
-        "expires_in": 3600
-    })
+        "expires_in": 3600,
+        "authenticated_user": user["username"],
+        "authenticated_client": client_id,
+        "role": user["role"],
+        "scope": user["scope"],
+    }), 200
+
 
 VERIFY_METHODS = [
     "GET",
@@ -60,6 +106,7 @@ VERIFY_METHODS = [
     "HEAD",
 ]
 
+
 @app.route(
     "/verify",
     defaults={"original_path": ""},
@@ -70,7 +117,6 @@ VERIFY_METHODS = [
     methods=VERIFY_METHODS,
 )
 def verify(original_path=""):
-
     auth_header = request.headers.get(
         "Authorization"
     )
@@ -80,16 +126,12 @@ def verify(original_path=""):
             "error": "Missing Authorization header"
         }), 401
 
-    if not auth_header.startswith(
-        "Bearer "
-    ):
+    if not auth_header.startswith("Bearer "):
         return jsonify({
             "error": "Invalid Authorization header"
         }), 401
 
-    token = auth_header.split(
-        " ", 1
-    )[1]
+    token = auth_header.split(" ", 1)[1]
 
     xfcc = request.headers.get(
         "x-forwarded-client-cert"
@@ -101,10 +143,7 @@ def verify(original_path=""):
         }), 400
 
     try:
-
-        payload = verify_access_token(
-            token
-        )
+        payload = verify_access_token(token)
 
         jwt_thumbprint = (
             payload
@@ -128,30 +167,46 @@ def verify(original_path=""):
                 "error": "certificate binding failed"
             }), 403
 
+        token_client_id = payload.get(
+            "client_id"
+        )
+
+        current_client_id = extract_cn_from_xfcc(
+            xfcc
+        )
+
+        if token_client_id != current_client_id:
+            return jsonify({
+                "error": "client identity mismatch"
+            }), 403
+
         return jsonify({
             "status": "ok",
-            "subject": payload.get("sub")
+            "subject": payload.get("sub"),
+            "client_id": token_client_id,
+            "role": payload.get("role"),
+            "scope": payload.get("scope"),
         }), 200
 
-    except jwt.InvalidTokenError as e:
+    except jwt.InvalidTokenError as exc:
         return jsonify({
-            "error": str(e)
+            "error": str(exc)
         }), 403
 
-    except ValueError as e:
+    except ValueError as exc:
         return jsonify({
-            "error": str(e)
+            "error": str(exc)
         }), 400
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     context = ssl.create_default_context(
         ssl.Purpose.CLIENT_AUTH
     )
 
     context.load_cert_chain(
         certfile="/app/tls/auth-service.crt",
-        keyfile="/app/tls/auth-service.key"
+        keyfile="/app/tls/auth-service.key",
     )
 
     context.load_verify_locations(
@@ -164,5 +219,5 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=8443,
         ssl_context=context,
-        debug=False
+        debug=False,
     )

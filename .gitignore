@@ -65,3 +65,5 @@ infra/auth-service/
 infra/service-certs/
 auth_service/keys/private.pem
 infra/keys/private.pem
+.venv-auth/
+.venv-bff/
