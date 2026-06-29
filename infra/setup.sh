@@ -32,7 +32,7 @@ openssl genrsa -out "$CERT_DIR/server.key" 2048
 openssl req -new \
     -key "$CERT_DIR/server.key" \
     -out "$CERT_DIR/server.csr" \
-    -subj "/C=VN/ST=HoChiMinh/L=ThuDuc/O=UTE_ZeroTrust_Group/OU=Gateway/CN=localhost"
+    -subj "/C=VN/ST=HoChiMinh/L=ThuDuc/O=UTE_ZeroTrust_Group/OU=Gateway/CN=zero-trust-gateway"
 
 # Tạo file cấu hình phần mở rộng mở rộng (SAN - Subject Alternative Name)
 # Cực kỳ quan trọng để Envoy nhận diện domain hợp lệ (localhost hoặc tên service trong docker)
@@ -44,9 +44,8 @@ subjectAltName = @alt_names
 
 [alt_names]
 DNS.1 = localhost
-DNS.2 = envoy
-DNS.3 = auth-service
-DNS.4 = resource-api
+DNS.2 = gateway.zero-trust.local
+IP.1 = 127.0.0.1
 EOF
 
 # Ký Server Cert bằng Root CA (Thời hạn 1 năm)

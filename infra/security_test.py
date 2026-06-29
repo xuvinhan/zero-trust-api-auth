@@ -58,7 +58,7 @@ def _find_auth_private_key() -> Path:
     - Hỗ trợ các vị trí phổ biến:
       + infra/keys/private.pem
       + auth_service/keys/private.pem
-      + auth_service/keys/private (1).pem
+      + auth_service/keys/private .pem
     - Có thể override bằng biến môi trường AUTH_PRIVATE_KEY.
     """
     script_dir = Path(__file__).resolve().parent
@@ -71,23 +71,15 @@ def _find_auth_private_key() -> Path:
         candidates.append(Path(env_key))
 
     candidates.extend([
-        # Trường hợp key nằm trong infra/keys/
-        script_dir / "keys" / "private.pem",
-        script_dir / "keys" / "private (1).pem",
-
         # Trường hợp key nằm trong auth_service/keys/
         project_root / "auth_service" / "keys" / "private.pem",
-        project_root / "auth_service" / "keys" / "private (1).pem",
-
-        # Trường hợp key nằm trực tiếp trong auth_service/
-        project_root / "auth_service" / "private.pem",
-        project_root / "auth_service" / "private (1).pem",
+        project_root / "auth_service" / "keys" / "private.pem",
 
         # Fallback theo vị trí certs
         CERTS_DIR.parent / "keys" / "private.pem",
-        CERTS_DIR.parent / "keys" / "private (1).pem",
+        CERTS_DIR.parent / "keys" / "private.pem",
         CERTS_DIR.parent.parent / "auth_service" / "keys" / "private.pem",
-        CERTS_DIR.parent.parent / "auth_service" / "keys" / "private (1).pem",
+        CERTS_DIR.parent.parent / "auth_service" / "keys" / "private.pem",
     ])
 
     checked = []
@@ -129,7 +121,7 @@ def _client_cert_x5t_s256() -> str:
 
 def _response_contains_expired(resp) -> bool:
     """
-    TC-04 không chỉ kiểm tra HTTP 403.
+    TC-04 không chỉ kiểm tra HTTPS 403.
     Response phải có bằng chứng là lỗi expired/expiration.
     """
     try:
@@ -267,12 +259,12 @@ def _expired_jwt():
     )
 
 def _print_result(tc_id, name, threat_ref, expected, response, passed):
-    status = f"{GREEN}✅ PASS{RESET}" if passed else f"{RED}❌ FAIL{RESET}"
+    status = f"{GREEN} PASS{RESET}" if passed else f"{RED} FAIL{RESET}"
     print(f"\n{'─'*65}")
     print(f"{BOLD}[{tc_id}] {name}{RESET}")
     print(f"  Threat Model Ref : {CYAN}{threat_ref}{RESET}")
     print(f"  Expected         : {expected}")
-    print(f"  Got              : HTTP {response.status_code} → {_safe_json(response)}")
+    print(f"  Got              : HTTPS {response.status_code} → {_safe_json(response)}")
     print(f"  Result           : {status}")
     results.append({"id": tc_id, "name": name, "passed": passed})
 
@@ -291,7 +283,7 @@ def tc01_valid_request():
         return
     resp = _make_request("GET", "/api/protected", headers={"Authorization": f"Bearer {token}"}, cert=(CERT_FILE, KEY_FILE))
     passed = (resp.status_code == 200)
-    _print_result("TC-01", "Valid Request", "N/A (Happy Path)", "HTTP 200 OK", resp, passed)
+    _print_result("TC-01", "Valid Request", "N/A (Happy Path)", "HTTPS 200 OK", resp, passed)
 
 def tc02_invalid_jwt_signature():
     print(f"\n{'═'*65}\n{BOLD}{CYAN}TC-02: INVALID JWT SIGNATURE — Forged token (RS256 wrong key){RESET}")
@@ -299,7 +291,7 @@ def tc02_invalid_jwt_signature():
     print(f"\n[FORGED JWT] {forged}\n")
     resp = _make_request("GET", "/api/protected", headers={"Authorization": f"Bearer {forged}"}, cert=(CERT_FILE, KEY_FILE))
     passed = (resp.status_code == 403)
-    _print_result("TC-02", "Invalid JWT Signature", "Threat 4.5 — Privilege Escalation", "HTTP 403 Forbidden", resp, passed)
+    _print_result("TC-02", "Invalid JWT Signature", "Threat 4.5 — Privilege Escalation", "HTTPS 403 Forbidden", resp, passed)
 
 def tc03_self_signed_cert():
     print(f"\n{'═'*65}\n{BOLD}{CYAN}TC-03: SELF-SIGNED CERTIFICATE — Impersonation (mTLS){RESET}")
@@ -355,7 +347,7 @@ def tc04_replay_attack():
         attempt_pass = (resp.status_code == 403 and expired_evidence)
 
         print(
-            f"  Attempt {i} → HTTP {resp.status_code} | "
+            f"  Attempt {i} → HTTPS {resp.status_code} | "
             f"expired evidence: {expired_evidence} | "
             f"{'PASS' if attempt_pass else 'FAIL'}"
         )
@@ -367,7 +359,7 @@ def tc04_replay_attack():
         "TC-04",
         "Replay Attack (Expired Token)",
         "Threat 4.2 + Residual Risk §5",
-        "HTTP 403 Forbidden + error contains 'expired' (all 3 attempts)",
+        "HTTPS 403 Forbidden + error contains 'expired' (all 3 attempts)",
         last_resp,
         all_pass
     )
@@ -377,13 +369,13 @@ def print_summary():
     total = len(results)
     passed = sum(1 for r in results if r["passed"])
     failed = total - passed
-    print(f"\n{'═'*65}\n{BOLD}📊 KẾT QUẢ KIỂM THỬ BẢO MẬT{RESET}\n{'═'*65}")
+    print(f"\n{'═'*65}\n{BOLD} KẾT QUẢ KIỂM THỬ BẢO MẬT{RESET}\n{'═'*65}")
     print(f"  Tổng số test case : {total}")
     print(f"  Passed            : {GREEN}{passed}{RESET}")
     print(f"  Failed            : {RED}{failed}{RESET}")
     print(f"{'─'*65}")
     for r in results:
-        icon = f"{GREEN}✅{RESET}" if r["passed"] else f"{RED}❌{RESET}"
+        icon = f"{GREEN}{RESET}" if r["passed"] else f"{RED}{RESET}"
         print(f"  {icon}  {r['id']} — {r['name']}")
     print(f"{'═'*65}")
     if failed > 0:
